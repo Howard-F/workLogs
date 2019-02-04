@@ -6,15 +6,7 @@ import textwrap
 import copy
 import os
 
-#	center = 97
-
-MAX_INSIDE_TEXT = 191 #one space of buffer on each side
-SOLID_LINE = " -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n"
-DOTTED_LINE = "| _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |\n"
-BUFFER = "|                                                                                                                                                                                                 |\n"
-LOG_DATE_FORMAT = "%a %b %d %Y - %H:%M"
-CASE_DATE_FORMAT = "%a %b %d %Y"
-
+from constants import *
 
 def createNewDayHeader(timeText=None):
 	if timeText is None:
@@ -23,7 +15,6 @@ def createNewDayHeader(timeText=None):
 	else:
 		newDayText = timeText
 
-	SPACES_TO_CENTER = "                                                              "
 	asciiNewDayText = pyfiglet.figlet_format(newDayText)
 
 	formattedText = ""
@@ -35,7 +26,6 @@ def createNewDayHeader(timeText=None):
 	BOT = BUFFER + SOLID_LINE + "\n\n\n\n"
 
 	return TOP + formattedText + BOT
-
 
 """
 	String id: max length 174
@@ -254,8 +244,7 @@ def logByDate(LOGS, timeText, id):
 
 
 def log(LOGS):
-	print("Search by ID or company shorthand (Exact)")
-	usr_input = raw_input("Enter option: ")
+	usr_input = menuWritter("Log", "Search by ID or company shorthand (Exact)", None, None, "Search logs for: ")
 
 	#Exit loop
 	if(usr_input.lower() == "exit"):
@@ -264,8 +253,7 @@ def log(LOGS):
 
 	searchResult = searchLogs(usr_input, LOGS)
 	if(searchResult):
-		print("Found Match: " + searchResult + ", is this correct? 1. (Y)es, 2. (N)o")
-		usr_input = raw_input("Enter option: ")
+		usr_input = menuWritter("Log", "Found Match: " + searchResult + ", is this correct?", ["Yes", "No"])
 
 		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
 			logToEdit = LOGS.get(searchResult).get("log")
@@ -299,8 +287,8 @@ def log(LOGS):
 			print("Invalid input: " + usr_input)
 			log(LOGS)
 	else:
-		print("Not found, would you like to create a new work item? 1. (Y)es, 2. (N)o")
-		usr_input = raw_input("Enter option: ")
+		usr_input = menuWritter("Log", "Not found, would you like to create a new work item?", ["Yes", "No"])
+
 		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
 			createNewWorkItem(LOGS)
 		elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
@@ -318,6 +306,76 @@ def outputToText(output, fileName=None):
 	file.write(output)
 	file.close
 
+"""
+input: String: title, String: message, List of Strings: options, String: header
+Prints the menu
+"""
+def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
+	LINE_LENGTH = 100
+
+	os.system("clear")
+
+	if header is not None:
+		print(header)
+
+	TOP = "= " + title + " " + ('=' * (LINE_LENGTH - len(title) - 3)) + "\n"
+	BOT = "\n" + ('=' * (LINE_LENGTH)) + "\n"
+
+	print(TOP)
+
+	if message is not None:
+		MESSAGE_BUFFER = ' ' * ((LINE_LENGTH - len(message)) / 2)
+		MESSAGE = MESSAGE_BUFFER + message + MESSAGE_BUFFER + (' ' * (1 - (len(message) % 2)))
+		print(MESSAGE)
+		if options is not None:
+			print("")
+
+	if options is not None:
+		options = [str(i + 1) + ". " + options[i] for i in range(0, len(options))]
+		
+		# space used by options = for each option: len(option)
+		OPTIONS_SPACE = 0
+		for option in options:
+			OPTIONS_SPACE += len(option)
+		
+		# space used by dividers = len(options list) - 1
+		DIVIDER_SPACE = len(options) - 1
+
+		# space remain = 58 - (space used by options + space used by dividers)
+		REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE)
+
+		# space between each option = (space remain / (len(options list) - 1)) / 2
+		OPTION_BUFFER = (REMAINING_SPACE / len(options)) / 2
+
+		#If not enough space
+		if OPTION_BUFFER < 2 or REMAINING_SPACE < 10:
+			raise Exception('Options exceed maximum total character limit')
+
+		#update space left after options buffer
+		REMAINING_SPACE = REMAINING_SPACE - ((OPTION_BUFFER * 2) * len(options))
+
+		# if space between each option + (((space remain / (len(options list) - 1)) % 2) / 2) <remainder div 2> is less than 5 # space between each option -= 1
+		# and update remaining space
+		if OPTION_BUFFER + (REMAINING_SPACE / 2) < 5:
+			OPTION_BUFFER -= 1
+			REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE + ((OPTION_BUFFER * 2) * len(options)))
+
+		OPTION_BUFFER = ' ' * OPTION_BUFFER
+
+		OPTIONS = ' ' * (REMAINING_SPACE / 2)
+		for option in options[:-1]:
+			OPTIONS += OPTION_BUFFER + option + OPTION_BUFFER + "|"
+
+		OPTIONS += OPTION_BUFFER + options[-1] + OPTION_BUFFER + (' ' * (REMAINING_SPACE / 2))
+		print(OPTIONS)
+
+	print(BOT)
+	if inputMsg is None:
+		inputMsg = "Enter option: "
+	return raw_input(inputMsg)
+
+
+
 
 def main():
 	LOGS = load_logs("LOGS")
@@ -326,12 +384,7 @@ def main():
 
 	usr_input = ""
 	while(1):
-		os.system("clear")
-		print(pyfiglet.figlet_format("Logger . py"))
-		print("= Main Menu ==============================================\n")
-		print("     1. Log   |   2. New   |   3. View   |   4. Exit.     ")
-		print("\n==========================================================\n")
-		usr_input = raw_input("Enter option: ")
+		usr_input = menuWritter("Main Menu", None, ["Log", "New", "View", "Exit"], pyfiglet.figlet_format("Logger . py"))
 
 		#print(load_logs("LOGS"))
 		if(usr_input == "1" or usr_input.lower() == "log"):
@@ -339,9 +392,10 @@ def main():
 		elif(usr_input == "2" or usr_input.lower() == "new"):
 			createNewWorkItem(LOGS)
 		elif(usr_input == "3" or usr_input.lower() == "view"):
+
 			print("View Logs for:")
 			print("1. Yesterday, 2. Today, 3. All by date, 4. All by case, 5. Specific ID")
-			usr_input = raw_input("Enter option: ")
+			usr_input = menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "All by case", "Specific ID"])
 
 			viewOutput = ""
 			if(usr_input == "1"):
@@ -371,6 +425,9 @@ main()
 #Company Shorthand Duplicates
 #Exit out of logging without loggin
 #Edit?
+#Close Case
+	# Archive?
+	# Reopen?
 # view log by specific id
 
 
@@ -383,35 +440,6 @@ main()
 
 #LOGS = {'1': {'companyShorthand': '3', 'companyName': '2', 'log': [('Mon Jan 21 2019 - 16:39', '5\n'), ('Mon Jan 22 2019 - 16:39', '123123\n')], 'summary': '4'}, 'by_date': {'Mon Jan 21 2019': ['1', '2']}, '2': {'companyShorthand': '4', 'companyName': '3', 'log': [('Mon Jan 21 2019 - 16:39', '6\n')], 'summary': '5'}}
 
-
-
-"""
-LOGS = {  
-   '1':{  
-      'companyShorthand':'3',
-      'companyName':'2',
-      'log':[  
-         ('Mon Jan 21 2019 - 16:39         ', '         5         \n'),
-         ('Mon Jan 22 2019 - 16:39         ', '         123123         \n')
-      ],
-      'summary':'4'
-   },
-   'by_date':{  
-      'Mon Jan 21 2019':[  
-         '1',
-         '2'
-      ]
-   },
-   '2':{  
-      'companyShorthand':'4',
-      'companyName':'3',
-      'log':[  
-         ('Mon Jan 21 2019 - 16:39         ', '         6         \n')
-      ],
-      'summary':'5'
-   }
-}
-"""
 
 
 
