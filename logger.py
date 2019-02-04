@@ -1,66 +1,11 @@
-import pyfiglet
 import datetime
 import pickle
 import sys
 import textwrap
-import copy
 import os
 
 from constants import *
-
-def createNewDayHeader(timeText=None):
-	if timeText is None:
-		now = datetime.datetime.now()
-		newDayText = now.strftime(CASE_DATE_FORMAT)
-	else:
-		newDayText = timeText
-
-	asciiNewDayText = pyfiglet.figlet_format(newDayText)
-
-	formattedText = ""
-	longestLine = 0
-	for split in asciiNewDayText.split('\n')[:5]:
-		formattedText += "|" + (' ' * (96 - len(split) / 2)) + split + (' ' * (96 - len(split) / 2)) + (' ' * (1 - (len(split) % 2))) + "|\n"
-
-	TOP = SOLID_LINE + BUFFER
-	BOT = BUFFER + SOLID_LINE + "\n\n\n\n"
-
-	return TOP + formattedText + BOT
-
-"""
-	String id: max length 174
-	String companyName: max length 176
-	String desc: max length 181 chars
-	Return: String
-"""
-def prettifyCaseHeader(id, companyName, companySH, desc):
-	if(len(id) > 174):
-		raise ValueError("ID exceeds 174 charcters")
-	elif(len(companyName) > 176):
-		raise ValueError("ID exceeds 176 charcters")
-	elif(len(desc) > 181):
-		raise ValueError("ID exceeds 176 charcters")
-
-	TOP = SOLID_LINE + BUFFER + BUFFER
-	ID_ROW = "| > Case Number/ID: " + id + (' ' * (174 - len(id))) + "|\n"
-	COMP_ROW = "| > Company Name: " + companyName + " | " +  "(" + companySH + ")" + (' ' * (171 - (len(companyName) + len(companySH)) )) + "|\n"
-	DESC_ROW = "| > Summary: " + desc + (' ' * (181 - len(desc))) + "|\n"
-	BOT = BUFFER + BUFFER + SOLID_LINE
-
-	return TOP + ID_ROW + COMP_ROW + DESC_ROW + BOT
-
-
-def prettifyLog(timeText, log):
-	TOP = BUFFER + "| > Log Time: " + timeText + (' ' * (180 - len(timeText))) + "|\n" + BUFFER
-
-	logData = ""
-	for row in log.split("\n"):
-		logData += "| " + row + (' ' * (MAX_INSIDE_TEXT - len(row))) + " |\n"
-
-	BOT = BUFFER + DOTTED_LINE
-
-	return TOP + logData + BOT
-
+from prettify_logs import *
 
 def save_logs(logs, file_name):
     with open('logs/'+ file_name + '.pkl', 'wb') as f:
@@ -131,79 +76,6 @@ def createNewWorkItem(LOGS):
 		return createNewWorkItem(LOGS)
 	else:
 		return 0
-
-#Log entries is a list of tuples
-#Returns the entry for the time given
-def getCaseByTime(logEntries, timeText):
-	for logEntry in logEntries:
-		if logEntry[0] == timeText:
-			return logEntry[1]
-
-
-def prettifyCase(id, case):
-	caseLogs = case.get("log")
-	logTimes = [x[0] for x in caseLogs]
-	res = ""
-
-	res += prettifyCaseHeader(id, case.get("companyName"), case.get("companyShorthand"), case.get("summary"))
-
-	for loggedTime in logTimes:
-		res += prettifyLog(loggedTime, getCaseByTime(caseLogs, loggedTime))
-
-	res = res[:len(res) - 196] + SOLID_LINE
-	return res
-
-
-def prettifyAllLogs(LOGS):
-	res = ""
-	cases = LOGS.keys()
-	if "by_date" in cases: cases.remove("by_date")
-	for case in cases:
-		res += prettifyCase(case, LOGS.get(case)) + "\n\n"
-	return res
-
-"""
-	input: LOGS, timeText in ("Mon Jan 20 2019") format (CASE_DATE_FORMAT)
-"""
-def viewLogByDate(LOGS, timeText):
-	res = createNewDayHeader(timeText)
-
-	givenDateTimelogs = datetime.datetime.strptime(timeText, CASE_DATE_FORMAT).replace(hour=23, minute=59, second=59, microsecond=999999)
-
-	if not timeText in LOGS.get("by_date").keys():
-		return ""
-	else:
-		ids = LOGS.get("by_date").get(timeText)
-
-		for id in ids:
-			workItem = copy.deepcopy(LOGS.get(id))
-			for log in workItem.get("log"):
-				currentLogdateTimelogs = datetime.datetime.strptime(log[0],LOG_DATE_FORMAT)
-				#if the log time is inside timeText timeframe then write to res
-				if givenDateTimelogs < currentLogdateTimelogs:
-					workItem.get("log").remove(log)
-			res += prettifyCase(id, workItem) + "\n"
-
-	return res
-
-
-def viewAllLogsByDate(LOGS):
-	dates = LOGS.get("by_date").keys()
-
-	res = ""
-
-	if not dates:
-		return ""
-	else:
-		dateslogss = [datetime.datetime.strptime(date, CASE_DATE_FORMAT) for date in dates]
-		dateslogss.sort()
-		dates = [datetime.datetime.strftime(datelogs, CASE_DATE_FORMAT) for datelogs in dateslogss]
-		
-		for date in dates:
-			res += viewLogByDate(LOGS, date) + "\n\n\n\n"
-	return res
-
-	
 
 
 """
@@ -379,6 +251,7 @@ def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
 
 def main():
 	LOGS = load_logs("LOGS")
+	prettify = Prettify(LOGS)
 
 	if not LOGS.get("by_date"): LOGS["by_date"] = {}
 
@@ -400,11 +273,11 @@ def main():
 			viewOutput = ""
 			if(usr_input == "1"):
 				yesterday = datetime.date.today() - datetime.timedelta(1)
-				viewOutput = viewLogByDate(LOGS, yesterday.strftime(CASE_DATE_FORMAT))
+				viewOutput = prettify.logsOnDate(yesterday.strftime(CASE_DATE_FORMAT))
 			elif(usr_input == "2"):
-				viewOutput = viewLogByDate(LOGS, datetime.datetime.now().strftime(CASE_DATE_FORMAT))
+				viewOutput = prettify.logsOnDate(datetime.datetime.now().strftime(CASE_DATE_FORMAT))
 			elif(usr_input == "3"):
-				viewOutput = viewAllLogsByDate(LOGS)
+				viewOutput = prettify.allLogsByDate()
 
 			if viewOutput != "":
 				outputToText(viewOutput)
@@ -429,6 +302,7 @@ main()
 	# Archive?
 	# Reopen?
 # view log by specific id
+#logger for the logger?
 
 
 #print(load_logs("LOGS"))
