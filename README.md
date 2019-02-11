@@ -12,7 +12,7 @@
 * Edit?
 * Close Case
 
-   Archive?
+   Archive?  
    Reopen?
 
 * view log by specific id

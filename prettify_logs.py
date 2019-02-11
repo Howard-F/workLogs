@@ -26,7 +26,7 @@ class PrettifyHelper:
 		formattedText = ""
 		longestLine = 0
 		for split in asciidayText.split('\n')[:5]:
-			formattedText += "|" + (' ' * (96 - len(split) / 2)) + split + (' ' * (96 - len(split) / 2)) + (' ' * (1 - (len(split) % 2))) + "|\n"
+			formattedText += "|" + (' ' * (96 - len(split) // 2)) + split + (' ' * (96 - len(split) // 2)) + (' ' * (1 - (len(split) % 2))) + "|\n"
 
 		top = SOLID_LINE + BUFFER
 		bot = BUFFER + SOLID_LINE + "\n\n\n\n"

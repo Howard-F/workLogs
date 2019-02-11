@@ -24,7 +24,7 @@ Input: String search term
 Output: ID key of Logs to edit
 """
 def searchLogs(searchTerm, LOGS):
-	ids = LOGS.keys()
+	ids = list(LOGS.keys())
 	if "by_date" in ids: ids.remove("by_date")
 
 	
@@ -36,15 +36,15 @@ def searchLogs(searchTerm, LOGS):
 
 
 def createNewWorkItem(LOGS):
-	id = raw_input("What is the case number or ID of the work item?\n").upper()
+	id = input("What is the case number or ID of the work item?\n").upper()
 
 	if LOGS.get(id):
 		print("Matching Existing case, returning to main")
 		main()
 
-	company = raw_input("What is the company name? (N/A if not applicable)\n")
-	companyShorthand = raw_input("What is the shorthand name or acroymn of the company? (N/A if not applicable)\n")
-	summary = raw_input("What is the summary of the work item?\n")
+	company = input("What is the company name? (N/A if not applicable)\n")
+	companyShorthand = input("What is the shorthand name or acroymn of the company? (N/A if not applicable)\n")
+	summary = input("What is the summary of the work item?\n")
 	print("Any additional notes? (Press return twice to finish)")
 	log = getLogInput("", 0)
 	now = datetime.datetime.now()
@@ -55,7 +55,7 @@ def createNewWorkItem(LOGS):
 		print("Is this correct? 1. (Y)es, 2. (N)o")
 		print("ID: %s\nCompany Name: %s\nCompany Shorthand: %s\nSummary: %s\nDescription: \n%s" % (id, company, companyShorthand, summary, log))
 
-		usr_input = raw_input("Enter option: ")
+		usr_input = input("Enter option: ")
 
 		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
 			data = {"companyName": company, "companyShorthand": companyShorthand, "summary": summary, "log": [[timeText, log]]}
@@ -84,7 +84,7 @@ def createNewWorkItem(LOGS):
 	Returns: String of input
 """
 def getLogInput(res, counter):
-	usr_input = raw_input()
+	usr_input = input()
 	if(usr_input.lower() == "exit"):
 		print("Goodbye.")
 		sys.exit()
@@ -125,7 +125,7 @@ def log(LOGS):
 
 	searchResult = searchLogs(usr_input, LOGS)
 	if(searchResult):
-		usr_input = menuWritter("Log", "Found Match: " + searchResult + ", is this correct?", ["Yes", "No"])
+		usr_input = menuWritter("Log", "Found Match: \"" + LOGS.get(searchResult).get("summary") + "\", is this correct?", ["Yes", "No"])
 
 		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
 			logToEdit = LOGS.get(searchResult).get("log")
@@ -196,7 +196,7 @@ def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
 	print(TOP)
 
 	if message is not None:
-		MESSAGE_BUFFER = ' ' * ((LINE_LENGTH - len(message)) / 2)
+		MESSAGE_BUFFER = ' ' * ((LINE_LENGTH - len(message)) // 2)
 		MESSAGE = MESSAGE_BUFFER + message + MESSAGE_BUFFER + (' ' * (1 - (len(message) % 2)))
 		print(MESSAGE)
 		if options is not None:
@@ -217,7 +217,7 @@ def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
 		REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE)
 
 		# space between each option = (space remain / (len(options list) - 1)) / 2
-		OPTION_BUFFER = (REMAINING_SPACE / len(options)) / 2
+		OPTION_BUFFER = (REMAINING_SPACE // len(options)) // 2
 
 		#If not enough space
 		if OPTION_BUFFER < 2 or REMAINING_SPACE < 10:
@@ -228,23 +228,23 @@ def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
 
 		# if space between each option + (((space remain / (len(options list) - 1)) % 2) / 2) <remainder div 2> is less than 5 # space between each option -= 1
 		# and update remaining space
-		if OPTION_BUFFER + (REMAINING_SPACE / 2) < 5:
+		if OPTION_BUFFER + (REMAINING_SPACE // 2) < 5:
 			OPTION_BUFFER -= 1
 			REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE + ((OPTION_BUFFER * 2) * len(options)))
 
 		OPTION_BUFFER = ' ' * OPTION_BUFFER
 
-		OPTIONS = ' ' * (REMAINING_SPACE / 2)
+		OPTIONS = ' ' * (REMAINING_SPACE // 2)
 		for option in options[:-1]:
 			OPTIONS += OPTION_BUFFER + option + OPTION_BUFFER + "|"
 
-		OPTIONS += OPTION_BUFFER + options[-1] + OPTION_BUFFER + (' ' * (REMAINING_SPACE / 2))
+		OPTIONS += OPTION_BUFFER + options[-1] + OPTION_BUFFER + (' ' * (REMAINING_SPACE // 2))
 		print(OPTIONS)
 
 	print(BOT)
 	if inputMsg is None:
 		inputMsg = "Enter option: "
-	return raw_input(inputMsg)
+	return input(inputMsg)
 
 
 
@@ -301,8 +301,3 @@ main()
 #print(createCaseHeader("TS0100121", "abc", "test"))
 
 #LOGS = {'1': {'companyShorthand': '3', 'companyName': '2', 'log': [('Mon Jan 21 2019 - 16:39', '5\n'), ('Mon Jan 22 2019 - 16:39', '123123\n')], 'summary': '4'}, 'by_date': {'Mon Jan 21 2019': ['1', '2']}, '2': {'companyShorthand': '4', 'companyName': '3', 'log': [('Mon Jan 21 2019 - 16:39', '6\n')], 'summary': '5'}}
-
-
-
-
-
