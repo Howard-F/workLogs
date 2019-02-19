@@ -1,303 +1,187 @@
 import datetime
 import pickle
-import sys
-import textwrap
-import os
 
 from constants import *
 from prettify_logs import *
 
-def save_logs(logs, file_name):
-    with open('logs/'+ file_name + '.pkl', 'wb') as f:
-        pickle.dump(logs, f, pickle.HIGHEST_PROTOCOL)
+
+class Logger():
+
+	def __init__(self):
+		LOGS = self.load_logs("c")
+		if not LOGS.get("by_date"): LOGS["by_date"] = {}
+		self.LOGS = LOGS
+		self.prettify = PrettifyLogs(LOGS)
 
 
-def load_logs(file_name):
-	try:
-	    with open('logs/' + file_name + '.pkl', 'rb') as f:
-	        return pickle.load(f)
-	except IOError:
-		return {}
+	def getWorkItem(self, id):
+		""" Gets work item
 
-"""
-Input: String search term
-Output: ID key of Logs to edit
-"""
-def searchLogs(searchTerm, LOGS):
-	ids = list(LOGS.keys())
-	if "by_date" in ids: ids.remove("by_date")
-
-	
-	for id in ids:
-		if searchTerm.lower() == id.lower() or LOGS.get(id).get("companyShorthand") == searchTerm.upper():
-			return id
-	
-	return ""
+		Args:
+			id (str): ID of item to retrieve
+		
+		Returns:
+			Object: Work item object.
+		"""
+		return self.LOGS.get(id)
 
 
-def createNewWorkItem(LOGS):
-	id = input("What is the case number or ID of the work item?\n").upper()
+	def save_logs(self, mode):
+		""" Saves logs object as pickle file in ./logs/file_name
 
-	if LOGS.get(id):
-		print("Matching Existing case, returning to main")
-		main()
+		Args:
+			mode (str): Declares which obj to save.
+				c - Current LOGS to ./logs/LOGS/pkl
+			file_name (str): file_name in logs folder
+		"""
+		if mode == "c":
+			with open('logs/'+ LOGS_FILE_NAME, 'wb') as f:
+				pickle.dump(self.LOGS, f, pickle.HIGHEST_PROTOCOL)
 
-	company = input("What is the company name? (N/A if not applicable)\n")
-	companyShorthand = input("What is the shorthand name or acroymn of the company? (N/A if not applicable)\n")
-	summary = input("What is the summary of the work item?\n")
-	print("Any additional notes? (Press return twice to finish)")
-	log = getLogInput("", 0)
-	now = datetime.datetime.now()
-	timeText = now.strftime(LOG_DATE_FORMAT)
 
-	redirect = 0
-	while(True):
-		print("Is this correct? 1. (Y)es, 2. (N)o")
-		print("ID: %s\nCompany Name: %s\nCompany Shorthand: %s\nSummary: %s\nDescription: \n%s" % (id, company, companyShorthand, summary, log))
+	def load_logs(self, mode):
+		""" Loads logs object from pickle file in ./logs/file_name
 
-		usr_input = input("Enter option: ")
+		Args:
+			mode (str): Declares which obj to load
+				c - Current LOGS from ./logs/LOGS/pkl
 
-		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
-			data = {"companyName": company, "companyShorthand": companyShorthand, "summary": summary, "log": [[timeText, log]]}
-			LOGS[id] = data
-			logByDate(LOGS, now.strftime(CASE_DATE_FORMAT), id)
+		Returns:
+			Object: Object created from pickle file
+		"""
+		if mode == "c":
+			try:
+				with open('logs/' + LOGS_FILE_NAME, 'rb') as f:
+					return pickle.load(f)
+			except IOError:
+				print("Failed to open " + LOGS_FILE_NAME)
+				return {}
 
-			print("Writing to logs")
-			save_logs(LOGS, "LOGS")
-			break
-		elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
-			print("Returning you to main create new work item menu")
-			redirect = 1
-			break
-		else:
-			print("Invalid Input")
-	
-	if redirect == 1:
-		return createNewWorkItem(LOGS)
-	else:
+
+	def searchLogs(self, searchTerm):
+		""" Searches logs for id by company shorthand or id
+
+			Args:
+				searchTerm (str): term to search by
+
+			Returns:
+				String; ID of found item
+		"""
+		ids = list(self.LOGS.keys())
+		if "by_date" in ids: ids.remove("by_date")
+
+		for id in ids:
+			if searchTerm.lower() == id.lower() or self.LOGS.get(id).get("companyShorthand") == searchTerm.upper():
+				return id
+
+		return ""
+
+
+	def addNewWorkItem(self, id, company, companySH, summary, logData):
+		""" Adds a new work item to the logs
+
+			Args:
+				id (str): ID of new item
+				company (str): Company name of new item
+				companySH (str): Shorthand name of company of new item
+				summary (str): Summary of new item
+				logData (str): Extra log data of new item
+
+			Returns:
+				Int: 0 if successful
+		"""
+		now = datetime.datetime.now()
+		data = {"companyName": company, "companyShorthand": companySH, "summary": summary, "log": [[now.strftime(LOG_DATE_FORMAT), logData]]}
+		self.LOGS[id] = data
+		self.logByDate(now.strftime(CASE_DATE_FORMAT), id)
+		self.save_logs("c")
 		return 0
 
 
-"""
-	Takes a continuous stream of input until 2 empty lines
-	Input: recursive result, counter for new lines
-	Returns: String of input
-"""
-def getLogInput(res, counter):
-	usr_input = input()
-	if(usr_input.lower() == "exit"):
-		print("Goodbye.")
-		sys.exit()
+	def logByDate(self, timeText, id):
+		"""Logs the work item to the special worked on cases per date category
 
-	if not usr_input:
-		if counter == 1:
-			return res[:-1]
-		counter += 1
-	else:
-		counter = 0
+			Args:
+				timeText (str): time log was updated in CASE_DATE_FORMAT
+				id (str): ID of item
+			Returns:
+				Int: 0 if successful
+		"""
+		# Array of IDs for a day
+		dayLog = self.LOGS.get("by_date").get(timeText)
 
-	usr_input = textwrap.fill(usr_input, MAX_INSIDE_TEXT)
-
-	res += usr_input + "\n"
-
-	return getLogInput(res, counter)
-
-
-def logByDate(LOGS, timeText, id):
-	# Array of IDs for a day
-	dayLog = LOGS.get("by_date").get(timeText)
-
-	# If day already made
-	if dayLog:
-		if not id in dayLog:
-			dayLog.append(id)
-	else:
-		LOGS.get("by_date")[timeText] = [id]
-
-
-def log(LOGS):
-	usr_input = menuWritter("Log", "Search by ID or company shorthand (Exact)", None, None, "Search logs for: ")
-
-	#Exit loop
-	if(usr_input.lower() == "exit"):
-		print("Goodbye.")
-		sys.exit()
-
-	searchResult = searchLogs(usr_input, LOGS)
-	if(searchResult):
-		usr_input = menuWritter("Log", "Found Match: \"" + LOGS.get(searchResult).get("summary") + "\", is this correct?", ["Yes", "No"])
-
-		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
-			logToEdit = LOGS.get(searchResult).get("log")
-
-			print("Taking notes now")
-			logText = getLogInput("", 0)
-
-			now = datetime.datetime.now()
-			timeText = now.strftime(LOG_DATE_FORMAT)
-
-			#If inside this case and there is already a log entry for this time
-			alreadyEntryForThisTime = False
-			for entry in logToEdit:
-				if timeText == entry[0]:
-					entry[1] += logText
-					alreadyEntryForThisTime = True
-
-			if not alreadyEntryForThisTime:
-				logToEdit.append([timeText, logText])
-
-			logByDate(LOGS, now.strftime(CASE_DATE_FORMAT), searchResult)
-
-			print("Writing to logs")
-			save_logs(LOGS, "LOGS")
-
-
-		elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
-			print("Returning you to main search")
-			log(LOGS)
+		# If day already made
+		if dayLog:
+			if not id in dayLog:
+				dayLog.append(id)
 		else:
-			print("Invalid input: " + usr_input)
-			log(LOGS)
-	else:
-		usr_input = menuWritter("Log", "Not found, would you like to create a new work item?", ["Yes", "No"])
+			self.LOGS.get("by_date")[timeText] = [id]
 
-		if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
-			createNewWorkItem(LOGS)
-		elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
-			print("Returning you to main search")
-			log(LOGS)
-		else:
-			print("Invalid input: " + usr_input)
-			log(LOGS)
 
-def outputToText(output, fileName=None):
-	if fileName is None:
-		fileName = "output.txt"
+	def logWork(self, id, logData):
+		"""Logs the work item
 
-	file = open(fileName, "w")
-	file.write(output)
-	file.close
+			Args:
+				id (str): ID of item
+				logData (str): time log was updated in CASE_DATE_FORMAT
+			Returns:
+				Int: 0 if successful
+		"""
+		now = datetime.datetime.now()
+		timeText = now.strftime(LOG_DATE_FORMAT)
 
-"""
-input: String: title, String: message, List of Strings: options, String: header
-Prints the menu
-"""
-def menuWritter(title, message=None, options=None, header=None, inputMsg=None):
-	LINE_LENGTH = 100
+		logToEdit = self.LOGS.get(id).get("log")
+		#If inside this case and there is already a log entry for this time
+		alreadyEntryForThisTime = False
+		for entry in logToEdit:
+			if timeText == entry[0]:
+				entry[1] += logData
+				alreadyEntryForThisTime = True
 
-	os.system("clear")
+		if not alreadyEntryForThisTime:
+			logToEdit.append([timeText, logData])
+			self.logByDate(now.strftime(CASE_DATE_FORMAT), id)
 
-	if header is not None:
-		print(header)
-
-	TOP = "= " + title + " " + ('=' * (LINE_LENGTH - len(title) - 3)) + "\n"
-	BOT = "\n" + ('=' * (LINE_LENGTH)) + "\n"
-
-	print(TOP)
-
-	if message is not None:
-		MESSAGE_BUFFER = ' ' * ((LINE_LENGTH - len(message)) // 2)
-		MESSAGE = MESSAGE_BUFFER + message + MESSAGE_BUFFER + (' ' * (1 - (len(message) % 2)))
-		print(MESSAGE)
-		if options is not None:
-			print("")
-
-	if options is not None:
-		options = [str(i + 1) + ". " + options[i] for i in range(0, len(options))]
-		
-		# space used by options = for each option: len(option)
-		OPTIONS_SPACE = 0
-		for option in options:
-			OPTIONS_SPACE += len(option)
-		
-		# space used by dividers = len(options list) - 1
-		DIVIDER_SPACE = len(options) - 1
-
-		# space remain = 58 - (space used by options + space used by dividers)
-		REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE)
-
-		# space between each option = (space remain / (len(options list) - 1)) / 2
-		OPTION_BUFFER = (REMAINING_SPACE // len(options)) // 2
-
-		#If not enough space
-		if OPTION_BUFFER < 2 or REMAINING_SPACE < 10:
-			raise Exception('Options exceed maximum total character limit')
-
-		#update space left after options buffer
-		REMAINING_SPACE = REMAINING_SPACE - ((OPTION_BUFFER * 2) * len(options))
-
-		# if space between each option + (((space remain / (len(options list) - 1)) % 2) / 2) <remainder div 2> is less than 5 # space between each option -= 1
-		# and update remaining space
-		if OPTION_BUFFER + (REMAINING_SPACE // 2) < 5:
-			OPTION_BUFFER -= 1
-			REMAINING_SPACE = LINE_LENGTH - (OPTIONS_SPACE + DIVIDER_SPACE + ((OPTION_BUFFER * 2) * len(options)))
-
-		OPTION_BUFFER = ' ' * OPTION_BUFFER
-
-		OPTIONS = ' ' * (REMAINING_SPACE // 2)
-		for option in options[:-1]:
-			OPTIONS += OPTION_BUFFER + option + OPTION_BUFFER + "|"
-
-		OPTIONS += OPTION_BUFFER + options[-1] + OPTION_BUFFER + (' ' * (REMAINING_SPACE // 2))
-		print(OPTIONS)
-
-	print(BOT)
-	if inputMsg is None:
-		inputMsg = "Enter option: "
-	return input(inputMsg)
+		self.save_logs("c")
+		return 0
 
 
 
+	def viewLogs(self, dataMode, timeFilter, outputMode, fileName=None):
+		"""Outputs logs
 
-def main():
-	LOGS = load_logs("LOGS")
-	prettify = Prettify(LOGS)
-
-	if not LOGS.get("by_date"): LOGS["by_date"] = {}
-
-	usr_input = ""
-	while(1):
-		usr_input = menuWritter("Main Menu", None, ["Log", "New", "View", "Exit"], pyfiglet.figlet_format("Logger . py"))
-
-		#print(load_logs("LOGS"))
-		if(usr_input == "1" or usr_input.lower() == "log"):
-			log(LOGS)
-		elif(usr_input == "2" or usr_input.lower() == "new"):
-			createNewWorkItem(LOGS)
-		elif(usr_input == "3" or usr_input.lower() == "view"):
-
-			print("View Logs for:")
-			print("1. Yesterday, 2. Today, 3. All by date, 4. All by case, 5. Specific ID")
-			usr_input = menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "All by case", "Specific ID"])
-
-			viewOutput = ""
-			if(usr_input == "1"):
+			Args:
+				dataMode (str): The data selected to output
+					c - current active logs
+				timeMode (str): Filter output by time
+					abd - All by date
+					y - yesterday's logs only
+					t - today's logs only
+				outputMode (str): The output method
+					f - to file
+			Returns:
+				Int: 0 if successful
+		"""
+		outputData = ""
+		if dataMode == "c":
+			if timeFilter == "abd":
+				outputData = self.prettify.allLogsByDate()
+			elif timeFilter == "y":
 				yesterday = datetime.date.today() - datetime.timedelta(1)
-				viewOutput = prettify.logsOnDate(yesterday.strftime(CASE_DATE_FORMAT))
-			elif(usr_input == "2"):
-				viewOutput = prettify.logsOnDate(datetime.datetime.now().strftime(CASE_DATE_FORMAT))
-			elif(usr_input == "3"):
-				viewOutput = prettify.allLogsByDate()
+				outputData = self.prettify.logsOnDate(yesterday.strftime(CASE_DATE_FORMAT))
+			elif timeFilter == "t":
+				outputData = self.prettify.logsOnDate(datetime.datetime.now().strftime(CASE_DATE_FORMAT))
+		else:
+			return 2
 
-			if viewOutput != "":
-				outputToText(viewOutput)
-			else:
-				print("Nothing logged or view failed.")
+		if outputData == "":
+			return 1
 
-		elif(usr_input.lower() == "exit" or usr_input == "4"):
-			print("Goodbye.")
-			sys.exit()
-		#print(load_logs("LOGS").get("TS001test").get("log").get("Wed Jan 16 - 06:10"))
+		if outputMode == "f":
+			if fileName is None:
+				fileName = DEFAULT_ACTIVE_WORK_LOGS_OUTPUT
+			file = open(fileName, "w")
+			file.write(outputData)
+			file.close
+		return 0
 
-
-main()
-
-
-#print(load_logs("LOGS"))
-#print(load_logs("LOGS").get("TS001test".upper()).get("log").get("2017-01-05-15:35"))
-#main()
-
-#print(createNewDayHeader())
-#print(createCaseHeader("TS0100121", "abc", "test"))
-
-#LOGS = {'1': {'companyShorthand': '3', 'companyName': '2', 'log': [('Mon Jan 21 2019 - 16:39', '5\n'), ('Mon Jan 22 2019 - 16:39', '123123\n')], 'summary': '4'}, 'by_date': {'Mon Jan 21 2019': ['1', '2']}, '2': {'companyShorthand': '4', 'companyName': '3', 'log': [('Mon Jan 21 2019 - 16:39', '6\n')], 'summary': '5'}}
