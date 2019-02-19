@@ -104,7 +104,7 @@ class PrettifyHelper:
 
 
 
-class Prettify:
+class PrettifyLogs:
 
 	def __init__(self, logs):
 		self.prettify = PrettifyHelper()
