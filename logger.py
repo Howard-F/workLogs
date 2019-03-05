@@ -11,8 +11,13 @@ class Logger():
 		LOGS = self.load_logs("c")
 		if not LOGS.get("by_date"): LOGS["by_date"] = {}
 		self.LOGS = LOGS
+		#self.ARCHIVES = self.load_logs("a")
 		self.prettify = PrettifyLogs(LOGS)
+		self.outputDays = DEFAULT_DISPLAYED_DAYS
 
+	def autoCommit(self):
+		if AUTO_COMMIT:
+			self.viewLogs("c", "d", "f")
 
 	def getWorkItem(self, id):
 		""" Gets work item
@@ -44,7 +49,8 @@ class Logger():
 
 		Args:
 			mode (str): Declares which obj to load
-				c - Current LOGS from ./logs/LOGS/pkl
+				c - Current LOGS from ./logs/LOGS.pkl
+				a - Archived LOGS from ./logs/ARCHIVE.pkl
 
 		Returns:
 			Object: Object created from pickle file
@@ -55,6 +61,13 @@ class Logger():
 					return pickle.load(f)
 			except IOError:
 				print("Failed to open " + LOGS_FILE_NAME)
+				return {}
+		elif mode == "a":
+			try:
+				with open('logs/' + ARCHIVES_FILE_NAME, 'rb') as f:
+					return pickle.load(f)
+			except IOError:
+				print("Failed to open " + ARCHIVES_FILE_NAME)
 				return {}
 
 
@@ -91,10 +104,11 @@ class Logger():
 				Int: 0 if successful
 		"""
 		now = datetime.datetime.now()
-		data = {"companyName": company, "companyShorthand": companySH, "summary": summary, "log": [[now.strftime(LOG_DATE_FORMAT), logData]]}
+		data = {"status": "open", "companyName": company, "companyShorthand": companySH, "summary": summary, "log": [[now.strftime(LOG_DATE_FORMAT), logData]]}
 		self.LOGS[id] = data
 		self.logByDate(now.strftime(CASE_DATE_FORMAT), id)
 		self.save_logs("c")
+		self.autoCommit()
 		return 0
 
 
@@ -143,11 +157,12 @@ class Logger():
 			self.logByDate(now.strftime(CASE_DATE_FORMAT), id)
 
 		self.save_logs("c")
+		self.autoCommit()
 		return 0
 
 
 
-	def viewLogs(self, dataMode, timeFilter, outputMode, fileName=None):
+	def viewLogs(self, dataMode, timeMode, outputMode, fileName=None):
 		"""Outputs logs
 
 			Args:
@@ -157,20 +172,26 @@ class Logger():
 					abd - All by date
 					y - yesterday's logs only
 					t - today's logs only
+					d - default (set in constant/config)
 				outputMode (str): The output method
 					f - to file
 			Returns:
-				Int: 0 if successful
+				Int: 0 if successful, 1 if logger error, 2 if input error
 		"""
 		outputData = ""
 		if dataMode == "c":
-			if timeFilter == "abd":
+			if timeMode == "abd":
 				outputData = self.prettify.allLogsByDate()
-			elif timeFilter == "y":
+			elif timeMode == "y":
 				yesterday = datetime.date.today() - datetime.timedelta(1)
 				outputData = self.prettify.logsOnDate(yesterday.strftime(CASE_DATE_FORMAT))
-			elif timeFilter == "t":
+			elif timeMode == "t":
 				outputData = self.prettify.logsOnDate(datetime.datetime.now().strftime(CASE_DATE_FORMAT))
+			elif timeMode == "d":
+				end = datetime.datetime.now()
+				start = (end - datetime.timedelta(DEFAULT_DISPLAYED_DAYS)).strftime(CASE_DATE_FORMAT)
+				end = end.strftime(CASE_DATE_FORMAT)
+				outputData = self.prettify.logsBetweenDates(start, end)
 		else:
 			return 2
 
@@ -183,5 +204,13 @@ class Logger():
 			file = open(fileName, "w")
 			file.write(outputData)
 			file.close
+		return 0
+
+
+	def editStatus(self, id, resolution):
+		workItem = self.getWorkItem(id)
+		workItem["status"] = "closed"
+		workItem["resolution"] = resolution
+		self.save_logs("c")
 		return 0
 

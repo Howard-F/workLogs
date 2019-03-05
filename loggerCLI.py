@@ -11,7 +11,22 @@ class LoggerCLI:
 
 	def __init__(self, logger):
 		self.logger = logger
+		self.display_logo = True
+		self.logo = pyfiglet.figlet_format("Logger . py")
+		self.autoCommit = AUTO_COMMIT
 
+
+	def autoCommitMsg(self):
+		""" Creates an autocommit message.
+
+		Returns:
+			String: AutoCommit message.
+
+		"""
+		if self.autoCommit:
+			return " AutoCommit: Wrote to " + str(DEFAULT_ACTIVE_WORK_LOGS_OUTPUT) + " on past " + str(DEFAULT_DISPLAYED_DAYS) + " days."
+		else:
+			return " AutoCommit: Not activated."
 
 	def getLogInput(self, res, counter):
 		""" Recursive function that takes a continuous stream of input until 2 empty lines are seen.
@@ -54,7 +69,7 @@ class LoggerCLI:
 
 		"""
 		if id is None:
-			id = self.menuWritter("New Item", None, None, None, "What is the case number or ID of the new work item?\n").upper()
+			id = self.menuWritter("New Item", "What is the case number or ID of the new work item?", None, None).upper()
 
 		if self.logger.searchLogs(id): return "Matching Existing case, returning to main"
 
@@ -71,7 +86,7 @@ class LoggerCLI:
 
 			if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
 				if self.logger.addNewWorkItem(id, company, companyShorthand, summary, log) == 0:
-					return "Wrote successfully to logs"
+					return "Work item " + id + " successfully added." + self.autoCommitMsg()
 			elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
 				return "Returned you to main"
 			else:
@@ -86,14 +101,14 @@ class LoggerCLI:
 
 		"""
 
-		usr_input = self.menuWritter("Log", "Search by ID or company shorthand (Exact)", None, None, "Search logs for: ")
+		id_usr_input = self.menuWritter("Log", "Search by ID or company shorthand (Exact)", None, None, "Search logs for: ")
 
 		#Exit loop
-		if(usr_input.lower() == "exit"):
+		if(id_usr_input.lower() == "exit"):
 			print("Goodbye.")
 			sys.exit()
 
-		id = self.logger.searchLogs(usr_input)
+		id = self.logger.searchLogs(id_usr_input)
 		if(id):
 			usr_input = self.menuWritter("Log", "Found Match: \"" + self.logger.getWorkItem(id).get("summary") + "\", is this correct?", ["Yes", "No"])
 
@@ -101,6 +116,7 @@ class LoggerCLI:
 				print("Enter status update now, hit enter twice to stop")
 				logData = self.getLogInput("", 0)
 				self.logger.logWork(id, logData)
+				return "Work on item " + id + " sucessfully logged." + self.autoCommitMsg()
 			elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
 				return "Returned you to main menu"
 			else:
@@ -110,7 +126,7 @@ class LoggerCLI:
 			usr_input = self.menuWritter("Log", "Not found, would you like to create a new work item?", ["Yes", "No"])
 
 			if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
-				self.addNewWorkItem(id)
+				self.addNewWorkItem(id_usr_input)
 			elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
 				return "Returned you to main menu"
 			else:
@@ -166,7 +182,7 @@ class LoggerCLI:
 		if header is not None:
 			print(header)
 
-		top = "= " + title + " " + ('=' * (CLI_LINE_LENGTH - len(title) - 3)) + "\n"
+		top = "= " + title + " " + ('=' * (CLI_LINE_LENGTH - len(title) - 3)) + "\n" 
 		bot = "\n" + ('=' * (CLI_LINE_LENGTH)) + "\n"
 
 		print(top)
@@ -228,14 +244,17 @@ class LoggerCLI:
 
 		"""
 		usr_input = ""
-		return_msg = ""
+		return_msg = None
 		while(1):
-			usr_input = self.menuWritter("Main Menu", return_msg, ["Log", "New", "View", "Exit"], pyfiglet.figlet_format("Logger . py"))
+			if not self.display_logo: self.logo = None
+			else: self.display_logo = False
+
+			usr_input = self.menuWritter("Main Menu", return_msg, ["Log", "New", "View", "Exit"], self.logo)
 
 			if(usr_input == "1" or usr_input.lower() == "log"):
 				return_msg = self.logWork()
 			elif(usr_input == "2" or usr_input.lower() == "new"):
-				return_msg = self.createNewWorkItem()
+				return_msg = self.addNewWorkItem()
 			elif(usr_input == "3" or usr_input.lower() == "view"):
 				return_msg = self.viewLogs()
 			elif(usr_input.lower() == "exit" or usr_input == "4"):
