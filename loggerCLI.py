@@ -41,7 +41,7 @@ class LoggerCLI:
 		"""
 		usr_input = input()
 		if(usr_input.lower() == "exit"):
-			print("Goodbye.")
+			print("Exit program request received: Goodbye.")
 			sys.exit()
 
 		if not usr_input:
@@ -101,12 +101,16 @@ class LoggerCLI:
 
 		"""
 
-		id_usr_input = self.menuWritter("Log", "Search by ID or company shorthand (Exact)", None, None, "Search logs for: ")
+		id_usr_input = self.menuWritter("Log", "Search by ID or company shorthand (Exact), '!m(ain)' to return to main menu", None, None, "Search logs for: ")
 
 		#Exit loop
 		if(id_usr_input.lower() == "exit"):
-			print("Goodbye.")
+			print("Exit program request received: Goodbye.")
 			sys.exit()
+		elif(id_usr_input == ""):
+			return self.logWork()
+		elif(id_usr_input == "!main" or id_usr_input == "!m"):
+			return "Returned to main menu"
 
 		id = self.logger.searchLogs(id_usr_input)
 		if(id):
@@ -126,7 +130,7 @@ class LoggerCLI:
 			usr_input = self.menuWritter("Log", "Not found, would you like to create a new work item?", ["Yes", "No"])
 
 			if(usr_input.lower() == "y" or usr_input.lower() == "yes" or usr_input == "1"):
-				self.addNewWorkItem(id_usr_input)
+				return self.addNewWorkItem(id_usr_input)
 			elif(usr_input.lower() == "n" or usr_input.lower() == "no" or usr_input == "2"):
 				return "Returned you to main menu"
 			else:
@@ -142,7 +146,7 @@ class LoggerCLI:
 
 		"""
 		returnCode = 2
-		usr_input = self.menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "All by case", "Specific ID"])
+		usr_input = self.menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "Default"])
 		if(usr_input == "1"):
 			returnCode = self.logger.viewLogs("c", "y", "f")
 		elif(usr_input == "2"):
@@ -258,6 +262,6 @@ class LoggerCLI:
 			elif(usr_input == "3" or usr_input.lower() == "view"):
 				return_msg = self.viewLogs()
 			elif(usr_input.lower() == "exit" or usr_input == "4"):
-				print("Goodbye.")
+				print("Exit program request received: Goodbye.")
 				sys.exit()
 
