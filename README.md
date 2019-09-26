@@ -1,4 +1,6 @@
-# Logging Tool for Everyday Work
+# Work Logging Tool
+
+Currently targetted at support cases, but can be used outside of support, future plans to add a more general use.
 
 ## Usage
 1. Clone the repo
@@ -15,7 +17,8 @@
 	}
 	'workItemIdentifier':
 	{
-		'status': 'open'
+		'status': ['open', 'Wed Feb 08 2019'],
+		'resolution': "", //Only exists when case status is closed.
 		'companyName': 'Some Company',
 		'companyShorthand': 'SC',
 		'summary': 'someSummary',
@@ -37,8 +40,14 @@
 	- Half implemented
 
 ### Not Started
+#### Detect Terminal Size for View
+#### View as HTML
+#### Validate Settings on startup
+#### Easier log searching
 #### Change case headers
 #### Delete function
+#### Show recent and select
+* fix the hacky view logs by ID
 * Ability to delete by ID
 #### Can't do accents
 * Accents crash the tool
@@ -50,6 +59,8 @@
 * Edit log information, e.g. meta data, or specific logs.
 #### Close Case
 	on close case, write closed case at end, with resolution
+	replace entry with a case closed entry, default to not show closed case entries
+	closed case entries only show on day closed
 	write to archive file, create a archive pkl item and hide from output (option to show), on progress for each day, just don't show, only show case closed + reso on case close day
 	on reopen, write a reopen with reason, and continue logging and unhide (basically a remove). Logs by default show last 2 days of cases that were closed.
 	keep progress data for how long?

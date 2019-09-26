@@ -6,7 +6,7 @@ import unittest
 class manualTest():
 	def __init__(self):
 		self.pp = pprint.PrettyPrinter(indent=4)
-		self.logger = Logger()
+		self.lTogger = Logger()
 
 	def printLogs(self):
 		self.pp.pprint(self.logger.LOGS)
@@ -22,9 +22,9 @@ class manualTest():
 			res += " ID not found in main logs."
 
 		by_date_flag = False
-		for i in list(test.logger.LOGS["by_date"].keys()):
-			if id in test.logger.LOGS["by_date"][i]:
-				test.logger.LOGS["by_date"][i].remove(id)
+		for i in list(self.logger.LOGS["by_date"].keys()):
+			if id in self.logger.LOGS["by_date"][i]:
+				self.logger.LOGS["by_date"][i].remove(id)
 				by_date_flag = True
 
 		if by_date_flag:

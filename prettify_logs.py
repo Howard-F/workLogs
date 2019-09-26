@@ -111,6 +111,9 @@ class PrettifyLogs:
 		self.logs = logs
 
 
+	def updateLogs(self, logs):
+		self.logs = logs
+
 	def allLogs(self):
 		""" Formats all logs without order
 		

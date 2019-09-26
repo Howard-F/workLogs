@@ -1,6 +1,9 @@
 import datetime
 import pickle
+import json
 
+from deepdiff import DeepDiff
+from pprint import pformat
 from constants import *
 from prettify_logs import *
 
@@ -11,9 +14,34 @@ class Logger():
 		LOGS = self.load_logs("c")
 		if not LOGS.get("by_date"): LOGS["by_date"] = {}
 		self.LOGS = LOGS
-		#self.ARCHIVES = self.load_logs("a")
-		self.prettify = PrettifyLogs(LOGS)
+		self.ARCHIVES = self.load_logs("a")
+		self.prettify = PrettifyLogs(self.LOGS)
 		self.outputDays = DEFAULT_DISPLAYED_DAYS
+
+		if DELETE_OLD_CLOSED_CASES:
+			self.deleteOldClosedItems()
+
+
+	def deleteOldClosedItems(self):
+		ids = list(self.LOGS.keys())
+		if "by_date" in ids: ids.remove("by_date")
+
+		now = datetime.datetime.now()
+		for id in ids:
+			# If the case is closed, and if the case is past the number of keep days, removed from logs
+			if self.LOGS[id]["status"][0] == "closed" and datetime.datetime.strptime(self.LOGS[id]["status"][1], CASE_DATE_FORMAT) + datetime.timedelta(days=CLOSED_CASE_KEEP_DAYS) < now:
+				# If not already archived
+				if not self.ARCHIVES.get(id):
+					self.ARCHIVES[id] = self.LOGS[id]
+					self.save_logs("a")
+				
+				del self.LOGS[id]
+				for date in list(self.LOGS["by_date"].keys()):
+					if id in self.LOGS["by_date"][date]:
+						self.LOGS["by_date"][date].remove(id)
+
+				self.save_logs("c")
+
 
 	def autoCommit(self):
 		if AUTO_COMMIT:
@@ -40,8 +68,11 @@ class Logger():
 			file_name (str): file_name in logs folder
 		"""
 		if mode == "c":
-			with open('logs/'+ LOGS_FILE_NAME, 'wb') as f:
+			with open(LOGS_FULL_PATH, 'wb') as f:
 				pickle.dump(self.LOGS, f, pickle.HIGHEST_PROTOCOL)
+		elif mode == "a":
+			with open(ARCHIVES_FULL_PATH, 'wb') as f:
+				pickle.dump(self.ARCHIVES, f, pickle.HIGHEST_PROTOCOL)
 
 
 	def load_logs(self, mode):
@@ -55,20 +86,18 @@ class Logger():
 		Returns:
 			Object: Object created from pickle file
 		"""
-		if mode == "c":
-			try:
-				with open('logs/' + LOGS_FILE_NAME, 'rb') as f:
+		try:
+			if mode == "c":
+				with open(LOGS_FULL_PATH, 'rb') as f:
 					return pickle.load(f)
-			except IOError:
-				print("Failed to open " + LOGS_FILE_NAME)
-				return {}
-		elif mode == "a":
-			try:
-				with open('logs/' + ARCHIVES_FILE_NAME, 'rb') as f:
+			elif mode == "a":
+				with open(ARCHIVES_FULL_PATH, 'rb') as f:
 					return pickle.load(f)
-			except IOError:
-				print("Failed to open " + ARCHIVES_FILE_NAME)
-				return {}
+		except IOError:
+			print("Failed to open logs files")
+			return {}
+		except EOFError:
+			return {}
 
 
 	def searchLogs(self, searchTerm):
@@ -104,7 +133,7 @@ class Logger():
 				Int: 0 if successful
 		"""
 		now = datetime.datetime.now()
-		data = {"status": "open", "companyName": company, "companyShorthand": companySH, "summary": summary, "log": [[now.strftime(LOG_DATE_FORMAT), logData]]}
+		data = {"status": ["open", now.strftime(CASE_DATE_FORMAT)], "companyName": company, "companyShorthand": companySH, "summary": summary, "log": [[now.strftime(LOG_DATE_FORMAT), logData]]}
 		self.LOGS[id] = data
 		self.logByDate(now.strftime(CASE_DATE_FORMAT), id)
 		self.save_logs("c")
@@ -160,9 +189,21 @@ class Logger():
 		self.autoCommit()
 		return 0
 
+	def editOpen(self):
+		with open(EDIT_FILE, 'w') as f:
+			f.write(json.dumps(self.LOGS, indent=4))
+		return 0
 
+	def editClose(self):
+		with open(EDIT_FILE) as f:
+			newLogs = json.load(f)
+		diff = pformat(DeepDiff(self.LOGS, newLogs))
+		self.LOGS = newLogs
+		self.save_logs("c")
+		self.prettify.updateLogs(self.LOGS)
+		return diff
 
-	def viewLogs(self, dataMode, timeMode, outputMode, fileName=None):
+	def viewLogs(self, dataMode, timeMode, outputMode, id=None, fileName=None):
 		"""Outputs logs
 
 			Args:
@@ -173,8 +214,10 @@ class Logger():
 					y - yesterday's logs only
 					t - today's logs only
 					d - default (set in constant/config)
+					i - specific id, requires id
 				outputMode (str): The output method
 					f - to file
+					cl - command line
 			Returns:
 				Int: 0 if successful, 1 if logger error, 2 if input error
 		"""
@@ -192,6 +235,11 @@ class Logger():
 				start = (end - datetime.timedelta(DEFAULT_DISPLAYED_DAYS)).strftime(CASE_DATE_FORMAT)
 				end = end.strftime(CASE_DATE_FORMAT)
 				outputData = self.prettify.logsBetweenDates(start, end)
+			elif timeMode == "i":
+				if id is None or (not self.searchLogs(id)):
+					return 1
+				else:
+					outputData = self.prettify.prettify.case(id, self.LOGS.get(id))
 		else:
 			return 2
 
@@ -204,13 +252,32 @@ class Logger():
 			file = open(fileName, "w")
 			file.write(outputData)
 			file.close
+		elif outputMode == "cl":
+			return outputData
+
 		return 0
 
 
-	def editStatus(self, id, resolution):
+	def editStatus(self, id, status):
 		workItem = self.getWorkItem(id)
-		workItem["status"] = "closed"
-		workItem["resolution"] = resolution
+
+		logData = ">>> Status changed - old: " + workItem["status"] + ", new: " + status + "."
+
+		now = datetime.datetime.now().strftime(CASE_DATE_FORMAT)
+		workItem["status"] = [status, now]
+
+		#logs edit status commet
+		workItem["log"].append([now.strftime(LOG_DATE_FORMAT), logData])
 		self.save_logs("c")
 		return 0
+
+
+	def closeCase(self, id, resolution):
+		workItem = self.getWorkItem(id)
+		workItem["resolution"] = resolution
+		self.editStatus(id, "closed")
+
+		self.ARCHIVES[id] = workItem
+		self.save_logs("a")
+
 

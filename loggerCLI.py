@@ -57,6 +57,17 @@ class LoggerCLI:
 
 		return self.getLogInput(res, counter)
 
+	def edit(self):
+		self.logger.editOpen()
+		usr_input = ""
+		while(not (usr_input == "d") and not (usr_input == "done")):
+			usr_input = self.menuWritter("Edit Logs", "Logs outputted to {} ready for changes, '(D)one' to save changes".format(EDIT_FILE), None, None).lower()
+		diff = self.logger.editClose()
+		if diff == "{}":
+			diff = "No changes made"
+		else:
+			diff = "Changes made:" + "\n" + diff
+		return diff
 
 	def addNewWorkItem(self, id=None):
 		""" Adds a new work item to logs
@@ -146,16 +157,23 @@ class LoggerCLI:
 
 		"""
 		returnCode = 2
-		usr_input = self.menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "Default"])
+		usr_input = self.menuWritter("View", "View logs for:", ["Yesterday", "Today", "All by date", "Specific ID", "Default"])
 		if(usr_input == "1"):
 			returnCode = self.logger.viewLogs("c", "y", "f")
 		elif(usr_input == "2"):
 			returnCode = self.logger.viewLogs("c", "t", "f")
 		elif(usr_input == "3"):
 			returnCode = self.logger.viewLogs("c", "abd", "f")
+		elif(usr_input == "4"):
+			usr_input = self.menuWritter("View", "Specific ID", None, None, "Please input a valid ID to view:")
+			returnData = self.logger.viewLogs("c", "i", "cl", usr_input)
+			print(returnData)
 		else:
-			return_msg = "Nothing logged or view failed."
+			return "Nothing logged or view failed."
 		#return "View Logs " + self.returnCodeHandler(returnCode)
+
+
+	#def closeCase(self):
 
 	#TODO
 	def returnCodeHandler(self, rc):
@@ -253,15 +271,19 @@ class LoggerCLI:
 			if not self.display_logo: self.logo = None
 			else: self.display_logo = False
 
-			usr_input = self.menuWritter("Main Menu", return_msg, ["Log", "New", "View", "Exit"], self.logo)
+			usr_input = self.menuWritter("Main Menu", return_msg, ["Log", "New", "Edit", "Close", "View", "Exit"], self.logo)
 
 			if(usr_input == "1" or usr_input.lower() == "log"):
 				return_msg = self.logWork()
 			elif(usr_input == "2" or usr_input.lower() == "new"):
 				return_msg = self.addNewWorkItem()
-			elif(usr_input == "3" or usr_input.lower() == "view"):
+			elif(usr_input == "3" or usr_input.lower() == "edit"):
+				return_msg = self.edit()
+			elif(usr_input == "4" or usr_input.lower() == "close"):
 				return_msg = self.viewLogs()
-			elif(usr_input.lower() == "exit" or usr_input == "4"):
+			elif(usr_input == "5" or usr_input.lower() == "view"):
+				return_msg = self.viewLogs()
+			elif(usr_input.lower() == "exit" or usr_input == "6"):
 				print("Exit program request received: Goodbye.")
 				sys.exit()
 
